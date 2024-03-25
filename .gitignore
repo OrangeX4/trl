@@ -10,6 +10,7 @@ benchmark/trl
 _tmp*
 tmp*
 tags
+local
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -490,12 +490,20 @@ class PPOTrainer(BaseTrainer):
 
             if length_sampler is not None:
                 generation_kwargs["max_new_tokens"] = length_sampler()
-            response = self.accelerator.unwrap_model(self.model).generate(
-                input_ids=query_tensor.unsqueeze(dim=0), **generation_kwargs
-            )
+            if not self.is_vision_encoder_decoder:
+                response = self.accelerator.unwrap_model(self.model).generate(
+                    input_ids=query_tensor.unsqueeze(dim=0), **generation_kwargs
+                )
+            else:
+                response = self.accelerator.unwrap_model(self.model).generate(
+                    pixel_values=query_tensor.unsqueeze(dim=0), **generation_kwargs
+                )
             if generate_ref_response:
                 with self.optional_peft_ctx():
-                    ref_response = ref_model.generate(input_ids=query_tensor.unsqueeze(dim=0), **generation_kwargs)
+                    if not self.is_vision_encoder_decoder:
+                        ref_response = ref_model.generate(input_ids=query_tensor.unsqueeze(dim=0), **generation_kwargs)
+                    else:
+                        ref_response = ref_model.generate(pixel_values=query_tensor.unsqueeze(dim=0), **generation_kwargs)
 
             if not return_prompt and not self.is_encoder_decoder:
                 response = response[:, query_tensor.shape[0] :]
@@ -691,15 +699,16 @@ class PPOTrainer(BaseTrainer):
         if self.is_distributed:
             pad_first = self.tokenizer.padding_side == "left"
 
-            model_inputs["input_ids"] = self.accelerator.pad_across_processes(
-                model_inputs["input_ids"],
-                dim=1,
-                pad_index=self.tokenizer.pad_token_id,
-                pad_first=pad_first,
-            )
-            model_inputs["attention_mask"] = self.accelerator.pad_across_processes(
-                model_inputs["attention_mask"], dim=1, pad_index=0, pad_first=pad_first
-            )
+            if not self.is_vision_encoder_decoder:
+                model_inputs["input_ids"] = self.accelerator.pad_across_processes(
+                    model_inputs["input_ids"],
+                    dim=1,
+                    pad_index=self.tokenizer.pad_token_id,
+                    pad_first=pad_first,
+                )
+                model_inputs["attention_mask"] = self.accelerator.pad_across_processes(
+                    model_inputs["attention_mask"], dim=1, pad_index=0, pad_first=pad_first
+                )
             if self.is_encoder_decoder:
                 model_inputs["decoder_input_ids"] = self.accelerator.pad_across_processes(
                     model_inputs["decoder_input_ids"],
@@ -930,9 +939,12 @@ class PPOTrainer(BaseTrainer):
 
     def prepare_model_inputs(self, queries: torch.Tensor, responses: torch.Tensor):
         if self.is_encoder_decoder:
-            input_data = self.data_collator(
-                [{"input_ids": q, "attention_mask": torch.ones_like(q)} for q in queries]
-            ).to(self.current_device)
+            if not self.is_vision_encoder_decoder:
+                input_data = self.data_collator(
+                    [{"input_ids": q, "attention_mask": torch.ones_like(q)} for q in queries]
+                ).to(self.current_device)
+            else:
+                input_data = {"pixel_values": torch.stack(queries).to(self.current_device)}
 
             decoder_inputs = self.data_collator(
                 [{"input_ids": r, "attention_mask": torch.ones_like(r)} for r in responses]

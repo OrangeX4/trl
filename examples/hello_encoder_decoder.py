@@ -40,4 +40,15 @@ reward = [torch.tensor(1.0, device=model.pretrained_model.device)]
 
 # 6. train model with ppo
 train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
-# print(train_stats)
+for key in train_stats:
+    try:
+        print(key, train_stats[key].shape)
+    except AttributeError:
+        print(key, train_stats[key])
+print('----------------------------------------------------------------------')
+train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
+for key in train_stats:
+    try:
+        print(key, train_stats[key].shape)
+    except AttributeError:
+        print(key, train_stats[key])

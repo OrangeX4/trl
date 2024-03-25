@@ -21,11 +21,11 @@ ppo_trainer = PPOTrainer(config, model, model_ref, processor.tokenizer)
 # load image from the IAM dataset
 url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
-pixel_values = processor(image, return_tensors="pt").pixel_values
-print(pixel_values.shape)
+query_tensor = processor(image, return_tensors="pt").pixel_values
+print(query_tensor.shape)
 
 # 4. generate model response
-response_tensor = ppo_trainer.generate(list(pixel_values))
+response_tensor = ppo_trainer.generate(list(query_tensor))
 response_txt = processor.batch_decode(response_tensor, skip_special_tokens=True)[0]
 
 print('response:', response_txt)
@@ -35,6 +35,17 @@ print('response:', response_txt)
 reward = [torch.tensor(1.0, device=model.pretrained_model.device)]
 
 # 6. train model with ppo
-# train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
-# print(train_stats)
+train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
+for key in train_stats:
+    try:
+        print(key, train_stats[key].shape)
+    except AttributeError:
+        print(key, train_stats[key])
+print('----------------------------------------------------------------------')
+train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
+for key in train_stats:
+    try:
+        print(key, train_stats[key].shape)
+    except AttributeError:
+        print(key, train_stats[key])
 
