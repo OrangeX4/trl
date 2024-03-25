@@ -210,8 +210,10 @@ class PPOTrainer(BaseTrainer):
         self.model = model
         self.model_params = filter(lambda p: p.requires_grad, self.model.parameters())
         self.is_encoder_decoder = hasattr(self.model, "is_encoder_decoder")
+        self.is_vision_encoder_decoder = hasattr(self.model, "is_vision_encoder_decoder")
         self.is_peft_model = getattr(self.model, "is_peft_model", False)
         config.is_encoder_decoder = self.is_encoder_decoder
+        config.is_vision_encoder_decoder = self.is_vision_encoder_decoder
         config.is_peft_model = self.is_peft_model
 
         is_using_tensorboard = config.log_with is not None and config.log_with == "tensorboard"
@@ -532,34 +534,43 @@ class PPOTrainer(BaseTrainer):
             end_index = min(len(query_tensors), i + batch_size)
 
             batch = query_tensors[i:end_index]
-            batch_mask = [torch.ones_like(element) for element in batch]
-            inputs = {"input_ids": batch, "attention_mask": batch_mask}
 
-            padded_inputs = self.tokenizer.pad(
-                inputs,
-                padding=True,
-                max_length=None,
-                pad_to_multiple_of=pad_to_multiple_of,
-                return_tensors="pt",
-            ).to(self.current_device)
+            if not self.is_vision_encoder_decoder:
+                batch_mask = [torch.ones_like(element) for element in batch]
+                inputs = {"input_ids": batch, "attention_mask": batch_mask}
+
+                padded_inputs = self.tokenizer.pad(
+                    inputs,
+                    padding=True,
+                    max_length=None,
+                    pad_to_multiple_of=pad_to_multiple_of,
+                    return_tensors="pt",
+                ).to(self.current_device)
+            else:
+                padded_inputs = {
+                    "pixel_values": torch.stack(batch).to(self.current_device),
+                }
 
             generations = self.accelerator.unwrap_model(model).generate(**padded_inputs, **generation_kwargs)
 
-            for generation, mask in zip(generations, padded_inputs["attention_mask"]):
-                if not self.is_encoder_decoder:
-                    output = generation[(1 - mask).sum() :]  # remove padding
-                else:
-                    output = generation
+            if not self.is_vision_encoder_decoder:
+                for generation, mask in zip(generations, padded_inputs["attention_mask"]):
+                    if not self.is_encoder_decoder:
+                        output = generation[(1 - mask).sum() :]  # remove padding
+                    else:
+                        output = generation
 
-                if not return_prompt and not self.is_encoder_decoder:
-                    output = output[(mask).sum() :]  # remove prompt
+                    if not return_prompt and not self.is_encoder_decoder:
+                        output = output[(mask).sum() :]  # remove prompt
 
-                if remove_padding and self.tokenizer.eos_token_id in output:
-                    pad_mask = output == self.tokenizer.eos_token_id
-                    pad_start = torch.nonzero(pad_mask, as_tuple=False)[0, 0].item()
-                    output = output[: pad_start + 1]  # keep the eos token at the end
+                    if remove_padding and self.tokenizer.eos_token_id in output:
+                        pad_mask = output == self.tokenizer.eos_token_id
+                        pad_start = torch.nonzero(pad_mask, as_tuple=False)[0, 0].item()
+                        output = output[: pad_start + 1]  # keep the eos token at the end
 
-                outputs.append(output)
+                    outputs.append(output)
+            else:
+                outputs.extend(generations)
 
         self.tokenizer.padding_side = padding_side_default
         return outputs

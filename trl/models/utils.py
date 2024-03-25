@@ -3,12 +3,13 @@ from typing import Literal, Optional, Tuple
 
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
-from .modeling_value_head import AutoModelForCausalLMWithValueHead, AutoModelForSeq2SeqLMWithValueHead
+from .modeling_value_head import AutoModelForCausalLMWithValueHead, AutoModelForSeq2SeqLMWithValueHead, AutoModelForVison2SeqLMWithValueHead
 
 
 SUPPORTED_ARCHITECTURES = (
     AutoModelForCausalLMWithValueHead,
     AutoModelForSeq2SeqLMWithValueHead,
+    AutoModelForVison2SeqLMWithValueHead,
 )
 
 

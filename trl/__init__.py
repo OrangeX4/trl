@@ -27,6 +27,7 @@ _import_structure = {
     "models": [
         "AutoModelForCausalLMWithValueHead",
         "AutoModelForSeq2SeqLMWithValueHead",
+        "AutoModelForVison2SeqLMWithValueHead",
         "PreTrainedModelWrapper",
         "create_reference_model",
         "setup_chat_format",
@@ -90,6 +91,7 @@ if TYPE_CHECKING:
     from .models import (
         AutoModelForCausalLMWithValueHead,
         AutoModelForSeq2SeqLMWithValueHead,
+        AutoModelForVison2SeqLMWithValueHead,
         PreTrainedModelWrapper,
         create_reference_model,
         setup_chat_format,

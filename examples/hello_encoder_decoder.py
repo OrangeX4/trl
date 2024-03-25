@@ -1,14 +1,14 @@
 # 0. imports
 import torch
-from transformers import GPT2Tokenizer
+from transformers import AutoTokenizer
 
-from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
+from trl import AutoModelForSeq2SeqLMWithValueHead, PPOConfig, PPOTrainer
 
 
 # 1. load a pretrained model
-model = AutoModelForCausalLMWithValueHead.from_pretrained("gpt2")
-model_ref = AutoModelForCausalLMWithValueHead.from_pretrained("gpt2")
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = AutoModelForSeq2SeqLMWithValueHead.from_pretrained("t5-small")
+model_ref = AutoModelForSeq2SeqLMWithValueHead.from_pretrained("t5-small")
+tokenizer = AutoTokenizer.from_pretrained("t5-small")
 tokenizer.pad_token = tokenizer.eos_token
 
 # 2. initialize trainer
@@ -40,3 +40,4 @@ reward = [torch.tensor(1.0, device=model.pretrained_model.device)]
 
 # 6. train model with ppo
 train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
+# print(train_stats)

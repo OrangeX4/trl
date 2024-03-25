@@ -127,6 +127,7 @@ class PPOConfig:
 
     # computed hyperparameters at runtime; we use `tyro.conf.Suppress` to hide them from the help text
     is_encoder_decoder: Optional[tyro.conf.Suppress[bool]] = None
+    is_vision_encoder_decoder: Optional[tyro.conf.Suppress[bool]] = None
     """TO BE FILLED In RUNTIME: Whether the model is an encoder-decoder model"""
     is_peft_model: Optional[tyro.conf.Suppress[bool]] = None
     """TO BE FILLED In RUNTIME: Whether the model is a PEFT model"""

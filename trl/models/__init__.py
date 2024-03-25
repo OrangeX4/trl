@@ -24,6 +24,7 @@ _import_structure = {
     "modeling_value_head": [
         "AutoModelForCausalLMWithValueHead",
         "AutoModelForSeq2SeqLMWithValueHead",
+        "AutoModelForVison2SeqLMWithValueHead",
     ],
     "utils": ["setup_chat_format", "SUPPORTED_ARCHITECTURES"],
 }
@@ -43,7 +44,7 @@ else:
 
 if TYPE_CHECKING:
     from .modeling_base import PreTrainedModelWrapper, create_reference_model
-    from .modeling_value_head import AutoModelForCausalLMWithValueHead, AutoModelForSeq2SeqLMWithValueHead
+    from .modeling_value_head import AutoModelForCausalLMWithValueHead, AutoModelForSeq2SeqLMWithValueHead, AutoModelForVison2SeqLMWithValueHead
     from .utils import setup_chat_format, SUPPORTED_ARCHITECTURES
 
     try:
