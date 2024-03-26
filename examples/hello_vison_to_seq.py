@@ -25,7 +25,15 @@ query_tensor = processor(image, return_tensors="pt").pixel_values
 print(query_tensor.shape)
 
 # 4. generate model response
-response_tensor = ppo_trainer.generate(list(query_tensor))
+generation_kwargs = {
+    "min_length": -1,
+    "top_k": 0.0,
+    "top_p": 1.0,
+    "do_sample": True,
+    "pad_token_id": processor.tokenizer.eos_token_id,
+    "max_new_tokens": 20,
+}
+response_tensor = ppo_trainer.generate(list(query_tensor), return_prompt=False, **generation_kwargs)
 response_txt = processor.batch_decode(response_tensor, skip_special_tokens=True)[0]
 
 print('response:', response_txt)
