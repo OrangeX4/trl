@@ -1,9 +1,9 @@
 import torch
-import numpy as np 
+import numpy as np
 
 from transformers import DataCollatorForLanguageModeling
 from typing import List, Dict, Any
-from .transforms import train_transform
+from .transforms import train_transform, inference_transform
 
 
 def left_move(x: torch.Tensor, pad_val):
@@ -16,7 +16,9 @@ def left_move(x: torch.Tensor, pad_val):
 
 def tokenize_fn(samples: Dict[str, List[Any]], tokenizer=None) -> Dict[str, List[Any]]:
     assert tokenizer is not None, 'tokenizer should not be None'
-    tokenized_formula = tokenizer(samples['latex_formula'], return_special_tokens_mask=True)
+    tokenized_formula = tokenizer(
+        samples['latex_formula'], return_special_tokens_mask=True
+    )
     tokenized_formula['pixel_values'] = samples['image']
     return tokenized_formula
 
@@ -26,7 +28,7 @@ def collate_fn(samples: List[Dict[str, Any]], tokenizer=None) -> Dict[str, List[
     pixel_values = [dic.pop('pixel_values') for dic in samples]
 
     clm_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-    
+
     batch = clm_collator(samples)
     batch['pixel_values'] = pixel_values
     batch['decoder_input_ids'] = batch.pop('input_ids')
@@ -44,3 +46,11 @@ def img_transform_fn(samples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
     processed_img = train_transform(samples['pixel_values'])
     samples['pixel_values'] = processed_img
     return samples
+
+
+def img_process_fn(samples: Dict[str, List[Any]]) -> Dict[str, torch.Tensor]:
+    images = samples['image']
+    images = [np.array(img.convert('RGB')) for img in images]
+    images = inference_transform(images)
+    images = [np.array(img) for img in images]
+    return {'pixel_values': images}
