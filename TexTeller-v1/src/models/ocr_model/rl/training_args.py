@@ -6,8 +6,9 @@ CONFIG = {
     # "per_device_eval_batch_size": 8,       # Batch size per GPU for evaluation
     "pretrained_model": "/home/orangex4/.cache/huggingface/hub/models--OleehyO--TexTeller-Backup/snapshots/4e06f3f0efa19c72a6702b7a7c88c185fb613d44",  # Pretrained model to use
     "ppo_config": {
-        "mini_batch_size": 12,
-        "batch_size": 12,
+        "mini_batch_size": 128,
+        "batch_size": 128,
+        "log_with": "tensorboard",
     },
     "generate_config": {
         "min_length": -1,
@@ -15,11 +16,9 @@ CONFIG = {
         "top_p": 1.0,
         "do_sample": True,
     },
-    "output_dir": "train_result",  # Output directory
     "overwrite_output_dir": False,  # If the output directory exists, do not delete its content
-    "report_to": ["tensorboard"],  # Report logs to TensorBoard
     "save_strategy": "steps",  # Strategy to save checkpoints
-    "save_steps": 500,  # Interval of steps to save checkpoints, can be int or a float (0~1), when float it represents the ratio of total training steps (e.g., can set to 1.0 / 2000)
+    "save_steps": 100,  # Interval of steps to save checkpoints, can be int or a float (0~1), when float it represents the ratio of total training steps (e.g., can set to 1.0 / 2000)
     "save_total_limit": 5,  # Maximum number of models to save. The oldest models will be deleted if this number is exceeded
     "logging_strategy": "steps",  # Log every certain number of steps
     "logging_steps": 500,  # Number of steps between each log

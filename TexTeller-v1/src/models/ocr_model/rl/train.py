@@ -1,7 +1,8 @@
 import sys
 
-sys.path.append('/home/orangex4/projects/trl')
+sys.path.append("/home/orangex4/projects/trl")
 import os
+from datetime import datetime
 from pathlib import Path
 
 import torch
@@ -24,9 +25,9 @@ def build_dataset():
     script_dirpath = Path(__file__).resolve().parent
     os.chdir(script_dirpath)
 
-    dataset = load_dataset(str(Path('./dataset/loader.py').resolve()))['train']
+    dataset = load_dataset(str(Path("./dataset/loader.py").resolve()))["train"]
     dataset = dataset.filter(
-        lambda x: x['image'].height > MIN_HEIGHT and x['image'].width > MIN_WIDTH
+        lambda x: x["image"].height > MIN_HEIGHT and x["image"].width > MIN_WIDTH
     )
     dataset = dataset.shuffle(seed=42)
     dataset = dataset.flatten_indices()
@@ -40,16 +41,27 @@ def collator(data):
     return dict((key, [d[key] for d in data]) for key in data[0])
 
 
-if __name__ == '__main__':
-    config = PPOConfig(**CONFIG['ppo_config'])
+def generate_dir_name():
+    # seed0-03-29-16-16-4150244
+    return f"seed{CONFIG['seed']}-{datetime.now().strftime('%m-%d-%H-%M-%S-%f')[:-3]}-{os.getpid()}"
+
+
+if __name__ == "__main__":
+    # set global seed
+    torch.manual_seed(CONFIG["seed"])
+    np.random.seed(CONFIG["seed"])
+    dir_name = generate_dir_name()
+    config = PPOConfig(
+        **CONFIG["ppo_config"], accelerator_kwargs={"project_dir": "logs/" + dir_name}
+    )
     dataset = build_dataset()
     model = AutoModelForVison2SeqLMWithValueHead.from_pretrained(
-        CONFIG['pretrained_model']
+        CONFIG["pretrained_model"]
     )
     ref_model = AutoModelForVison2SeqLMWithValueHead.from_pretrained(
-        CONFIG['pretrained_model']
+        CONFIG["pretrained_model"]
     )
-    tokenizer = TexTeller.get_tokenizer(CONFIG['pretrained_model'])
+    tokenizer = TexTeller.get_tokenizer(CONFIG["pretrained_model"])
     ppo_trainer = PPOTrainer(config, model, ref_model, tokenizer)
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -63,7 +75,7 @@ if __name__ == '__main__':
         "max_new_tokens": MAX_TOKEN_SIZE,
         "pad_token_id": tokenizer.eos_token_id,
     }
-    for epoch, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
+    for iteration, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
         query_tensors = [
             torch.from_numpy(np.array(pv)).to(ppo_trainer.accelerator.device)
             for pv in batch["pixel_values"]
@@ -87,4 +99,7 @@ if __name__ == '__main__':
         #### Run PPO step
         stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
         ppo_trainer.log_stats(stats, batch, rewards)
-        print(stats)
+
+        # save checkpoints
+        if iteration % CONFIG["save_steps"] == 0:
+            model.save_pretrained(f"train_result/{dir_name}/checkpoint-{iteration}")
