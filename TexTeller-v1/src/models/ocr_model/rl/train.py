@@ -90,7 +90,7 @@ if __name__ == "__main__":
         batch["response"] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
 
         #### Compute similarity score
-        rewards = formula_similarity_score(batch["response"], batch["formula"])
+        rewards = list(formula_similarity_score(batch["response"], batch["formula"]))
 
         #### Run PPO step
         stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
