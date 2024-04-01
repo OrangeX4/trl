@@ -18,6 +18,7 @@ from trl import (
 from .training_args import CONFIG
 from ..model.TexTeller import TexTeller
 from ..utils.functional import img_process_fn
+from ..utils.metrics import formula_similarity_score
 from ...globals import MAX_TOKEN_SIZE, MIN_WIDTH, MIN_HEIGHT
 
 
@@ -32,7 +33,7 @@ def build_dataset():
     dataset = dataset.shuffle(seed=42)
     dataset = dataset.flatten_indices()
     dataset = dataset.map(
-        img_process_fn, batched=True, remove_columns=dataset.column_names, num_proc=8
+        img_process_fn, batched=True, remove_columns=dataset.column_names
     )
     return dataset
 
@@ -88,13 +89,8 @@ if __name__ == "__main__":
             response_tensors.append(response[0])
         batch["response"] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
 
-        #### Compute sentiment score
-        # texts = [q + r for q, r in zip(batch["query"], batch["response"])]
-        # pipe_outputs = sentiment_pipe(texts, **sent_kwargs)
-        rewards = [
-            torch.tensor(1.0, device=model.pretrained_model.device)
-            for output in batch["response"]
-        ]
+        #### Compute similarity score
+        rewards = formula_similarity_score(batch["response"], batch["formula"])
 
         #### Run PPO step
         stats = ppo_trainer.step(query_tensors, response_tensors, rewards)

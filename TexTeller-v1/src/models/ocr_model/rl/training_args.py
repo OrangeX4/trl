@@ -6,8 +6,8 @@ CONFIG = {
     # "per_device_eval_batch_size": 8,       # Batch size per GPU for evaluation
     "pretrained_model": "/home/orangex4/.cache/huggingface/hub/models--OleehyO--TexTeller-Backup/snapshots/4e06f3f0efa19c72a6702b7a7c88c185fb613d44",  # Pretrained model to use
     "ppo_config": {
-        "mini_batch_size": 128,
-        "batch_size": 128,
+        "mini_batch_size": 16,
+        "batch_size": 16,
         "log_with": "tensorboard",
     },
     "generate_config": {
