@@ -1,5 +1,6 @@
 benchmark/trl
 *.bak
+*.typ
 .gitattributes
 .last_checked
 .gitconfig
