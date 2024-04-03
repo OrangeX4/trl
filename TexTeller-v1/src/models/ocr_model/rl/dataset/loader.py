@@ -62,11 +62,11 @@ class LatexFormulas(datasets.GeneratorBasedBuilder):
                     yield str(i), {
                         # Image from bytes
                         "image": Image.open(io.BytesIO(img_bytes)),
-                        "latex_formula": latex_formula,
+                        "latex_formula": latex_formula.strip(),
                     }
                 except Exception as e:
                     continue
                 finally:
                     i += 1
-                    if i == 10000:
-                        break
+                    # if i == 100:
+                    #     break
