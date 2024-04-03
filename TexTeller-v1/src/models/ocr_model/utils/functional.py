@@ -52,5 +52,4 @@ def img_process_fn(samples: Dict[str, List[Any]]) -> Dict[str, torch.Tensor]:
     images = samples["image"]
     images = [np.array(img.convert("RGB")) for img in images]
     images = inference_transform(images)
-    images = [np.array(img) for img in images]
     return {"pixel_values": images, "formula": samples["latex_formula"]}

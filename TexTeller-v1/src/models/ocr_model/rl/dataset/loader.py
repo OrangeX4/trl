@@ -4,22 +4,24 @@ import datasets
 import typst
 import io
 
-with open("mitex.typ", "w") as f:
+MITEX_FILE_PATH = Path(__file__).resolve().parent / "mitex.typ"
+with open(MITEX_FILE_PATH, "w") as f:
     f.write("")
-compiler = typst.Compiler("mitex.typ")
+compiler = typst.Compiler(MITEX_FILE_PATH)
 
 
 def mitex(latex, ppi=144.0):
     template = f"""
-    #import "@preview/mitex:0.2.2": *
+    #import "@preview/mitex:0.2.3": *
     #set page(height: auto, width: auto, margin: 0em)
     #mitex(`
     {latex}
     `)
     """
-    with open("mitex.typ", "w") as f:
+    with open(MITEX_FILE_PATH, "w") as f:
         f.write(template)
-    return compiler.compile(format="png", ppi=ppi)
+    res = compiler.compile(format="png", ppi=ppi)
+    return res
 
 
 DIR_URL = Path(
@@ -68,5 +70,5 @@ class LatexFormulas(datasets.GeneratorBasedBuilder):
                     continue
                 finally:
                     i += 1
-                    # if i == 100:
-                    #     break
+                    if i == 10000:
+                        break
