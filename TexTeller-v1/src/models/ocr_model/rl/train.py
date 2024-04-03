@@ -76,36 +76,32 @@ if __name__ == "__main__":
         "max_new_tokens": MAX_TOKEN_SIZE,
         "pad_token_id": tokenizer.eos_token_id,
     }
-    with open(f"logs/{dir_name}/trl/records.txt", "w") as records_file:
-        for iteration, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
-            query_tensors = [
-                torch.from_numpy(np.array(pv)).to(ppo_trainer.accelerator.device)
-                for pv in batch["pixel_values"]
-            ]
+    for iteration, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
+        query_tensors = [
+            torch.from_numpy(np.array(pv)).to(ppo_trainer.accelerator.device)
+            for pv in batch["pixel_values"]
+        ]
 
-            #### Get response
-            response_tensors = []
-            for query in query_tensors:
-                response = ppo_trainer.generate([query], **generate_config)
-                response_tensors.append(response[0])
-            batch["response"] = [
-                tokenizer.decode(r.squeeze()) for r in response_tensors
-            ]
+        #### Get response
+        response_tensors = []
+        for query in query_tensors:
+            response = ppo_trainer.generate([query], **generate_config)
+            response_tensors.append(response[0])
+        batch["response"] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
 
-            #### Compute similarity score
-            rewards = list(
-                formula_similarity_score(batch["response"], batch["formula"])
-            )
+        #### Compute similarity score
+        rewards = list(formula_similarity_score(batch["response"], batch["formula"]))
 
-            #### Run PPO step
-            stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
-            ppo_trainer.log_stats(stats, batch, rewards)
+        #### Run PPO step
+        stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
+        ppo_trainer.log_stats(stats, batch, rewards)
 
-            # save checkpoints
-            if iteration % CONFIG["save_steps"] == 0:
-                model.save_pretrained(f"train_result/{dir_name}/checkpoint-{iteration}")
+        # save checkpoints
+        if iteration % CONFIG["save_steps"] == 0:
+            model.save_pretrained(f"train_result/{dir_name}/checkpoint-{iteration}")
 
+        with open(f"logs/{dir_name}/trl/records.txt", "a") as f:
             for i, reward in enumerate(rewards):
-                records_file.write(f"{batch['formula'][i]}\n")
-                records_file.write(f"{batch['response'][i]}\n")
-                records_file.write(f"{reward}\n")
+                f.write(f"{batch['formula'][i]}\n")
+                f.write(f"{batch['response'][i]}\n")
+                f.write(f"{reward}\n")
