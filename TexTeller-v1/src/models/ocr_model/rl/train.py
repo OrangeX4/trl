@@ -53,7 +53,9 @@ if __name__ == "__main__":
     np.random.seed(CONFIG["seed"])
     dir_name = generate_dir_name()
     config = PPOConfig(
-        **CONFIG["ppo_config"], accelerator_kwargs={"project_dir": "logs/" + dir_name}
+        **CONFIG["ppo_config"],
+        accelerator_kwargs={"project_dir": "logs/" + dir_name},
+        seed=CONFIG["seed"],
     )
     dataset = build_dataset()
     model = AutoModelForVison2SeqLMWithValueHead.from_pretrained(
@@ -73,7 +75,6 @@ if __name__ == "__main__":
     )
     generate_config = {
         **CONFIG["generate_config"],
-        "max_new_tokens": MAX_TOKEN_SIZE,
         "pad_token_id": tokenizer.eos_token_id,
     }
     for iteration, batch in tqdm(enumerate(dataloader), total=len(dataloader)):

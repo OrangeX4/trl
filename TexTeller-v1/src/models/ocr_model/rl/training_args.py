@@ -15,10 +15,11 @@ CONFIG = {
         "top_k": 0.0,
         "top_p": 1.0,
         "do_sample": True,
+        "max_new_tokens": 256,
     },
     "overwrite_output_dir": False,  # If the output directory exists, do not delete its content
     "save_strategy": "steps",  # Strategy to save checkpoints
-    "save_steps": 200,  # Interval of steps to save checkpoints, can be int or a float (0~1), when float it represents the ratio of total training steps (e.g., can set to 1.0 / 2000)
+    "save_steps": 50,  # Interval of steps to save checkpoints, can be int or a float (0~1), when float it represents the ratio of total training steps (e.g., can set to 1.0 / 2000)
     "save_total_limit": 5,  # Maximum number of models to save. The oldest models will be deleted if this number is exceeded
     "logging_strategy": "steps",  # Log every certain number of steps
     "logging_steps": 500,  # Number of steps between each log

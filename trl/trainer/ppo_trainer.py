@@ -584,8 +584,9 @@ class PPOTrainer(BaseTrainer):
                         pads = torch.nonzero(pad_mask, as_tuple=False).flatten()
                         if len(pads) == 2:
                             output = output[pads[0] + 1: pads[1]]
-                        elif len(pads) == 1:
-                            assert pads[0] != 0
+                        elif len(pads) == 1 and pads[0] == 0:
+                            output = output[pads[0] + 1:]
+                        elif len(pads) == 1 and pads[0] != 0:
                             output = output[: pads[0]]
                     outputs.append(output)
 
