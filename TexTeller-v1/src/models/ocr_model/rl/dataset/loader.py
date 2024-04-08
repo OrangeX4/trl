@@ -70,5 +70,5 @@ class LatexFormulas(datasets.GeneratorBasedBuilder):
                     continue
                 finally:
                     i += 1
-                    if i == 10000:
-                        break
+                    # if i == 10000:
+                    #     break

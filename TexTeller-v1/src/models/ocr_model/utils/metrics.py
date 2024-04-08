@@ -59,14 +59,27 @@ def bleu_metric(eval_preds: EvalPrediction, tokenizer: RobertaTokenizer) -> Dict
 def image_similarity_score(pred_images, gt_images):
     try:
         pred_inputs = processor(pred_images, return_tensors="pt").to(DEVICE)
-        pred_outputs = model(**pred_inputs)
         gt_inputs = processor(gt_images, return_tensors="pt").to(DEVICE)
+        pred_outputs = model(**pred_inputs)
         gt_outputs = model(**gt_inputs)
         similarity_score = cosine_similarity(
             pred_outputs.pooler_output, gt_outputs.pooler_output, dim=1
         )
     except Exception:
-        similarity_score = torch.zeros(len(pred_images))
+        similarity_score = []
+        for i in range(len(pred_images)):
+            try:
+                pred_input = processor(pred_images[i], return_tensors="pt").to(DEVICE)
+                gt_input = processor(gt_images[i], return_tensors="pt").to(DEVICE)
+                pred_output = model(**pred_input)
+                gt_output = model(**gt_input)
+                score = cosine_similarity(
+                    pred_output.pooler_output, gt_output.pooler_output
+                ).item()
+                similarity_score.append(score)
+            except Exception:
+                similarity_score.append(0.0)
+        similarity_score = torch.tensor(similarity_score)
     return similarity_score
 
 
