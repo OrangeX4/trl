@@ -3,6 +3,7 @@ import os
 from functools import partial
 from pathlib import Path
 
+import torch
 from datasets import load_dataset
 from transformers import (
     Trainer,
@@ -56,7 +57,8 @@ def evaluate(model, tokenizer, eval_dataset, collate_fn):
         compute_metrics=partial(similarity_metric, tokenizer=tokenizer),
     )
 
-    eval_res = trainer.evaluate()
+    with torch.no_grad():
+        eval_res = trainer.evaluate()
     print(eval_res)
 
 
@@ -92,8 +94,8 @@ if __name__ == "__main__":
     # model = TexTeller()
     # or train from TexTeller pre-trained model: model = TexTeller.from_pretrained()
     model = TexTeller.from_pretrained(
-        # "/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/train_result/default/seed42-04-11-20-59-59-098-641253/checkpoint-2500"
-        "/home/orangex4/.cache/huggingface/hub/models--OleehyO--TexTeller-Backup/snapshots/4e06f3f0efa19c72a6702b7a7c88c185fb613d44"
+        "/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/train_result/default/seed42-04-11-20-59-59-098-641253/checkpoint-2500"
+        # "/home/orangex4/.cache/huggingface/hub/models--OleehyO--TexTeller-Backup/snapshots/4e06f3f0efa19c72a6702b7a7c88c185fb613d44"
     )
 
     # If you want to train from pre-trained model, please modify the path to your pre-trained checkpoint

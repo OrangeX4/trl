@@ -88,19 +88,23 @@ def image_similarity_score(pred_images, gt_images):
 def formula_similarity_score(pred_formulas, gt_formulas, fail_score=0.0):
     pred_images = []
     gt_images = []
-    success = []
-    for formula in pred_formulas:
+    success = [True] * len(pred_formulas)
+    for i, formula in enumerate(pred_formulas):
         try:
             img = Image.open(io.BytesIO(mitex(formula))).convert("RGB")
-            success.append(True)
         except Exception as e:
             img = Image.new("RGB", (224, 224))
-            success.append(False)
+            success[i] = False
         pred_images.append(img)
-    gt_images = [
-        Image.open(io.BytesIO(mitex(formula))).convert("RGB") for formula in gt_formulas
-    ]
-    scores = image_similarity_score(pred_images, gt_images)
+    for i, formula in enumerate(gt_formulas):
+        try:
+            img = Image.open(io.BytesIO(mitex(formula))).convert("RGB")
+        except Exception as e:
+            img = Image.new("RGB", (224, 224))
+            success[i] = False
+        gt_images.append(img)
+    with torch.no_grad():
+        scores = image_similarity_score(pred_images, gt_images)
     for i, s in enumerate(success):
         if not s:
             scores[i] = fail_score
