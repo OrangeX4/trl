@@ -54,7 +54,7 @@ if __name__ == "__main__":
     dir_name = generate_dir_name()
     config = PPOConfig(
         **CONFIG["ppo_config"],
-        accelerator_kwargs={"project_dir": "logs/" + dir_name},
+        accelerator_kwargs={"project_dir": "logs/default/" + dir_name},
         seed=CONFIG["seed"],
     )
     dataset = build_dataset()
@@ -88,7 +88,10 @@ if __name__ == "__main__":
         for query in query_tensors:
             response = ppo_trainer.generate([query], **generate_config)
             response_tensors.append(response[0])
-        batch["response"] = [tokenizer.decode(r.squeeze()) for r in response_tensors]
+        batch["response"] = [
+            tokenizer.decode(r.squeeze(), skip_special_tokens=True)
+            for r in response_tensors
+        ]
 
         #### Compute similarity score
         rewards = list(formula_similarity_score(batch["response"], batch["formula"]))
@@ -99,9 +102,11 @@ if __name__ == "__main__":
 
         # save checkpoints
         if iteration % CONFIG["save_steps"] == 0:
-            model.save_pretrained(f"train_result/{dir_name}/checkpoint-{iteration}")
+            model.save_pretrained(
+                f"train_result/default/{dir_name}/checkpoint-{iteration}"
+            )
 
-        with open(f"logs/{dir_name}/trl/records.txt", "a") as f:
+        with open(f"logs/default/{dir_name}/trl/records.txt", "a") as f:
             for i, reward in enumerate(rewards):
                 f.write(f"{batch['formula'][i]}\n")
                 f.write(f"{batch['response'][i]}\n")

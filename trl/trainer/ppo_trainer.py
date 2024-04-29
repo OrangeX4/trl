@@ -578,17 +578,7 @@ class PPOTrainer(BaseTrainer):
 
                     outputs.append(output)
             else:
-                for output in generations:
-                    if remove_padding and self.tokenizer.eos_token_id in output:
-                        pad_mask = output == self.tokenizer.eos_token_id
-                        pads = torch.nonzero(pad_mask, as_tuple=False).flatten()
-                        if len(pads) == 2:
-                            output = output[pads[0] + 1: pads[1]]
-                        elif len(pads) == 1 and pads[0] == 0:
-                            output = output[pads[0] + 1:]
-                        elif len(pads) == 1 and pads[0] != 0:
-                            output = output[: pads[0]]
-                    outputs.append(output)
+                outputs = generations
 
         self.tokenizer.padding_side = padding_side_default
         return outputs
