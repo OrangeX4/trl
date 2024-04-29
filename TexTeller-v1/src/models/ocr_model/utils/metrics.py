@@ -8,6 +8,7 @@ from typing import Dict
 from transformers import EvalPrediction, RobertaTokenizer, AutoImageProcessor, AutoModel
 from torch.nn.functional import cosine_similarity
 
+from tqdm import tqdm
 from PIL import Image
 import typst
 import io
@@ -53,7 +54,8 @@ def bleu_metric(eval_preds: EvalPrediction, tokenizer: RobertaTokenizer) -> Dict
 
     preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
     labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    return metric.compute(predictions=preds, references=labels)
+    res = metric.compute(predictions=preds, references=labels)
+    return res
 
 
 def image_similarity_score(pred_images, gt_images):
@@ -103,6 +105,26 @@ def formula_similarity_score(pred_formulas, gt_formulas, fail_score=0.0):
         if not s:
             scores[i] = fail_score
     return scores
+
+
+def similarity_metric(
+    eval_preds: EvalPrediction, tokenizer: RobertaTokenizer, batch_size=8
+) -> Dict:
+    logits, labels = eval_preds.predictions, eval_preds.label_ids
+    preds = logits
+
+    labels = np.where(labels == -100, 1, labels)
+
+    preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+    labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    res = []
+    for i in tqdm(range(0, len(preds), batch_size)):
+        res.extend(
+            formula_similarity_score(
+                preds[i : i + batch_size], labels[i : i + batch_size]
+            )
+        )
+    return {"image_similarity": torch.mean(torch.tensor(res))}
 
 
 if __name__ == "__main__":

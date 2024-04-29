@@ -1,9 +1,32 @@
 from PIL import Image
 from pathlib import Path
 import datasets
-import json
+import typst
+import io
 
-DIR_URL = Path('absolute/path/to/dataset/directory')
+MITEX_FILE_PATH = Path(__file__).resolve().parent / "mitex.typ"
+with open(MITEX_FILE_PATH, "w") as f:
+    f.write("")
+compiler = typst.Compiler(MITEX_FILE_PATH)
+
+
+def mitex(latex, ppi=144.0):
+    template = f"""
+    #import "@preview/mitex:0.2.3": *
+    #set page(height: auto, width: auto, margin: 0em)
+    #mitex(`
+    {latex}
+    `)
+    """
+    with open(MITEX_FILE_PATH, "w") as f:
+        f.write(template)
+    res = compiler.compile(format="png", ppi=ppi)
+    return res
+
+
+DIR_URL = Path(
+    "/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/dataset"
+)
 # e.g. DIR_URL = Path('/home/OleehyO/TeXTeller/src/models/ocr_model/train/dataset')
 
 
@@ -12,39 +35,40 @@ class LatexFormulas(datasets.GeneratorBasedBuilder):
 
     def _info(self):
         return datasets.DatasetInfo(
-            features=datasets.Features({
-                "image": datasets.Image(),
-                "latex_formula": datasets.Value("string")
-            })
+            features=datasets.Features(
+                {"image": datasets.Image(), "latex_formula": datasets.Value("string")}
+            )
         )
 
     def _split_generators(self, dl_manager: datasets.DownloadManager):
-        dir_path = Path(dl_manager.download(str(DIR_URL)))
+        dir_path = DIR_URL
         assert dir_path.is_dir()
 
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
-                    'dir_path': dir_path,
-                }
+                    "dir_path": dir_path,
+                },
             )
         ]
 
     def _generate_examples(self, dir_path: Path):
-        images_path   = dir_path / 'images'
-        formulas_path = dir_path / 'formulas.jsonl'
+        formulas_path = dir_path / "im2latex_formulas.lst"
 
-        img2formula = {}
-        with formulas_path.open('r', encoding='utf-8') as f:
-            for line in f:
-                single_json = json.loads(line)
-                img2formula[single_json['img_name']] = single_json['formula']
-
-        for img_path in images_path.iterdir():
-            if img_path.suffix not in ['.jpg', '.png']:
-                continue
-            yield str(img_path), {
-                "image": Image.open(img_path),
-                "latex_formula": img2formula[img_path.name]
-            }
+        i = 0
+        with formulas_path.open("r", encoding="utf-8") as f:
+            for latex_formula in f:
+                try:
+                    img_bytes = mitex(latex_formula)
+                    yield str(i), {
+                        # Image from bytes
+                        "image": Image.open(io.BytesIO(img_bytes)),
+                        "latex_formula": latex_formula.strip(),
+                    }
+                except Exception as e:
+                    continue
+                finally:
+                    i += 1
+                    # if i == 10000:
+                    #     break
