@@ -37,6 +37,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 processor = AutoImageProcessor.from_pretrained("google/vit-base-patch16-224")
 model = AutoModel.from_pretrained("google/vit-base-patch16-224").to(DEVICE)
+model.eval()
 
 
 def bleu_metric(eval_preds: EvalPrediction, tokenizer: RobertaTokenizer) -> Dict:
@@ -120,7 +121,7 @@ def similarity_metric(
     logits, labels = eval_preds.predictions, eval_preds.label_ids
     preds = logits
 
-    labels = np.where(labels == -100, 1, labels)
+    labels = [np.where(lb == -100, 1, lb) for lb in labels]
 
     preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
     gts = tokenizer.batch_decode(labels, skip_special_tokens=True)
@@ -136,7 +137,7 @@ def similarity_metric(
                 f.write(f"{g}\n")
                 f.write(f"{(l != 1).sum()}\n")
                 f.write(f"{r}\n")
-    return {"image_similarity": torch.mean(torch.tensor(res))}
+    return {"image_similarity": torch.mean(torch.tensor(res)).item()}
 
 
 if __name__ == "__main__":

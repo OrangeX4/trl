@@ -2,15 +2,20 @@ import os
 
 from functools import partial
 from pathlib import Path
+from tqdm import tqdm
 
 import torch
 from datasets import load_dataset
+
+# dataloader
+from torch.utils.data import DataLoader
 from transformers import (
     Trainer,
     TrainingArguments,
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
     GenerationConfig,
+    EvalPrediction,
 )
 
 from .training_args import CONFIG
@@ -20,51 +25,44 @@ from ..utils.metrics import bleu_metric, similarity_metric
 from ...globals import MAX_TOKEN_SIZE, MIN_WIDTH, MIN_HEIGHT
 
 
-def train(model, tokenizer, train_dataset, eval_dataset, collate_fn_with_tokenizer):
-    training_args = TrainingArguments(**CONFIG)
-    trainer = Trainer(
-        model,
-        training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
-        data_collator=collate_fn_with_tokenizer,
-    )
-
-    trainer.train(resume_from_checkpoint=None)
-
-
 def evaluate(model, tokenizer, eval_dataset, collate_fn):
-    eval_config = CONFIG.copy()
-    eval_config["predict_with_generate"] = True
-    generate_config = GenerationConfig(
-        max_new_tokens=MAX_TOKEN_SIZE,
-        num_beams=1,
-        do_sample=False,
-        pad_token_id=tokenizer.pad_token_id,
-        eos_token_id=tokenizer.eos_token_id,
-        bos_token_id=tokenizer.bos_token_id,
-    )
-    eval_config["generation_config"] = generate_config
-    seq2seq_config = Seq2SeqTrainingArguments(**eval_config)
 
-    trainer = Seq2SeqTrainer(
-        model,
-        seq2seq_config,
-        eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
-        data_collator=collate_fn,
-        compute_metrics=partial(
-            similarity_metric,
-            tokenizer=tokenizer,
-            log_path="/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/logs/default/seed42-04-11-20-59-59-098-641253/trl/eval.txt",
-            # log_path="/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/logs/default/eval.txt",
-        ),
-    )
-
+    model = model.to("cuda")
     with torch.no_grad():
-        eval_res = trainer.evaluate()
-    print(eval_res)
+        predictions = []
+        label_ids = []
+        # batch size 8
+        dataloader = DataLoader(
+            eval_dataset,
+            batch_size=8,
+            collate_fn=collate_fn,
+        )
+        # iterate over the dataset
+        for batch in tqdm(dataloader):
+            pixel_values = batch["pixel_values"]
+            pixel_values = pixel_values.to(model.device)
+            labels = batch["labels"].to(model.device)
+            # generate with generate_config
+            outputs = model.generate(
+                pixel_values,
+                max_new_tokens=MAX_TOKEN_SIZE,
+                num_beams=1,
+                do_sample=False,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                bos_token_id=tokenizer.bos_token_id,
+            )
+            predictions.extend(outputs)
+            label_ids.extend(labels)
+
+        predictions = [pred.cpu().numpy() for pred in predictions]
+        label_ids = [label.cpu().numpy() for label in label_ids]
+        eval_res = similarity_metric(
+            EvalPrediction(predictions, label_ids),
+            tokenizer,
+            log_path="/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/logs/default/seed42-04-11-20-59-59-098-641253/trl/eval.txt",
+        )
+        print(eval_res)
 
 
 if __name__ == "__main__":
