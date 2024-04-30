@@ -54,7 +54,12 @@ def evaluate(model, tokenizer, eval_dataset, collate_fn):
         eval_dataset=eval_dataset,
         tokenizer=tokenizer,
         data_collator=collate_fn,
-        compute_metrics=partial(similarity_metric, tokenizer=tokenizer),
+        compute_metrics=partial(
+            similarity_metric,
+            tokenizer=tokenizer,
+            log_path="/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/logs/default/seed42-04-11-20-59-59-098-641253/trl/eval.txt",
+            # log_path="/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/logs/default/eval.txt",
+        ),
     )
 
     with torch.no_grad():

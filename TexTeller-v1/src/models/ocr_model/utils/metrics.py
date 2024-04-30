@@ -112,7 +112,10 @@ def formula_similarity_score(pred_formulas, gt_formulas, fail_score=0.0):
 
 
 def similarity_metric(
-    eval_preds: EvalPrediction, tokenizer: RobertaTokenizer, batch_size=8
+    eval_preds: EvalPrediction,
+    tokenizer: RobertaTokenizer,
+    batch_size=8,
+    log_path=None,
 ) -> Dict:
     logits, labels = eval_preds.predictions, eval_preds.label_ids
     preds = logits
@@ -120,14 +123,19 @@ def similarity_metric(
     labels = np.where(labels == -100, 1, labels)
 
     preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-    labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    gts = tokenizer.batch_decode(labels, skip_special_tokens=True)
     res = []
     for i in tqdm(range(0, len(preds), batch_size)):
         res.extend(
-            formula_similarity_score(
-                preds[i : i + batch_size], labels[i : i + batch_size]
-            )
+            formula_similarity_score(preds[i : i + batch_size], gts[i : i + batch_size])
         )
+    if log_path is not None:
+        with open(log_path, "w") as f:
+            for p, g, l, r in zip(preds, gts, labels, res):
+                f.write(f"{p}\n")
+                f.write(f"{g}\n")
+                f.write(f"{(l != 1).sum()}\n")
+                f.write(f"{r}\n")
     return {"image_similarity": torch.mean(torch.tensor(res))}
 
 
