@@ -25,42 +25,50 @@ from ..utils.metrics import bleu_metric, similarity_metric
 from ...globals import MAX_TOKEN_SIZE, MIN_WIDTH, MIN_HEIGHT
 
 
-def evaluate(model, tokenizer, eval_dataset, collate_fn):
+def evaluate(model, tokenizer, eval_dataset, collate_fn, k=1):
 
     model = model.to("cuda")
     with torch.no_grad():
-        predictions = []
-        label_ids = []
-        # batch size 8
-        dataloader = DataLoader(
-            eval_dataset,
-            batch_size=8,
-            collate_fn=collate_fn,
-        )
-        # iterate over the dataset
-        for batch in tqdm(dataloader):
-            pixel_values = batch["pixel_values"]
-            pixel_values = pixel_values.to(model.device)
-            labels = batch["labels"].to(model.device)
-            # generate with generate_config
-            outputs = model.generate(
-                pixel_values,
-                max_new_tokens=MAX_TOKEN_SIZE,
-                num_beams=1,
-                do_sample=False,
-                pad_token_id=tokenizer.pad_token_id,
-                eos_token_id=tokenizer.eos_token_id,
-                bos_token_id=tokenizer.bos_token_id,
-            )
-            predictions.extend(outputs)
-            label_ids.extend(labels)
+        eval_predictions = []
 
-        predictions = [pred.cpu().numpy() for pred in predictions]
-        label_ids = [label.cpu().numpy() for label in label_ids]
+        def gen(do_sample=False):
+            predictions = []
+            label_ids = []
+            # batch size 8
+            dataloader = DataLoader(
+                eval_dataset,
+                batch_size=8,
+                collate_fn=collate_fn,
+            )
+            # iterate over the dataset
+            for batch in tqdm(dataloader):
+                pixel_values = batch["pixel_values"]
+                pixel_values = pixel_values.to(model.device)
+                labels = batch["labels"].to(model.device)
+                # generate with generate_config
+                outputs = model.generate(
+                    pixel_values,
+                    max_new_tokens=MAX_TOKEN_SIZE,
+                    num_beams=1,
+                    do_sample=do_sample,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    bos_token_id=tokenizer.bos_token_id,
+                )
+                predictions.extend(outputs)
+                label_ids.extend(labels)
+
+            predictions = [pred.cpu().numpy() for pred in predictions]
+            label_ids = [label.cpu().numpy() for label in label_ids]
+            return EvalPrediction(predictions, label_ids)
+
+        eval_predictions.append(gen(False))
+        for _ in range(k - 1):
+            eval_predictions.append(gen(True))
         eval_res = similarity_metric(
-            EvalPrediction(predictions, label_ids),
+            eval_predictions,
             tokenizer,
-            log_path="/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/logs/default/seed42-04-11-20-59-59-098-641253/trl/eval.txt",
+            log_path="/home/orangex4/projects/trl/TexTeller-v1/src/models/ocr_model/rl/logs/default/seed42-04-11-20-59-59-098-641253/trl/0.1/",
         )
         print(eval_res)
 
@@ -112,4 +120,4 @@ if __name__ == "__main__":
     # if enable_train:
     #     train(model, tokenizer, train_dataset, eval_dataset, collate_fn_with_tokenizer)
     if enable_evaluate and len(eval_dataset) > 0:
-        evaluate(model, tokenizer, eval_dataset, collate_fn_with_tokenizer)
+        evaluate(model, tokenizer, eval_dataset, collate_fn_with_tokenizer, k=10)

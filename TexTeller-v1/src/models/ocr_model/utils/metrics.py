@@ -4,7 +4,7 @@ import os
 
 import torch
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Union
 from transformers import EvalPrediction, RobertaTokenizer, AutoImageProcessor, AutoModel
 from torch.nn.functional import cosine_similarity
 
@@ -112,30 +112,57 @@ def formula_similarity_score(pred_formulas, gt_formulas, fail_score=0.0):
     return scores
 
 
+def reset_mitex_compiler():
+    global compiler
+    compiler = typst.Compiler(MITEX_FILE_PATH)
+
+
 def similarity_metric(
-    eval_preds: EvalPrediction,
+    eval_preds: Union[List[EvalPrediction], EvalPrediction],
     tokenizer: RobertaTokenizer,
     batch_size=8,
     log_path=None,
 ) -> Dict:
-    logits, labels = eval_preds.predictions, eval_preds.label_ids
-    preds = logits
-
-    labels = [np.where(lb == -100, 1, lb) for lb in labels]
-
-    preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-    gts = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    res = []
-    for i in tqdm(range(0, len(preds), batch_size)):
-        res.extend(
-            formula_similarity_score(preds[i : i + batch_size], gts[i : i + batch_size])
-        )
+    if not isinstance(eval_preds, list):
+        eval_preds = [eval_preds]
+    k = len(eval_preds)
+    ress = [[] for _ in range(k)]
+    for i, eval_pred in enumerate(eval_preds):
+        reset_mitex_compiler()
+        assert isinstance(eval_pred, EvalPrediction)
+        logits, labels = eval_pred.predictions, eval_pred.label_ids
+        preds = logits
+        labels = [np.where(lb == -100, 1, lb) for lb in labels]
+        preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        gts = tokenizer.batch_decode(labels, skip_special_tokens=True)
+        if log_path is not None:
+            with open(log_path + f"k{k}_i{i}_pred.txt", "w") as f:
+                for p, g, l in zip(preds, gts, labels):
+                    f.write(f"{p}\n")
+                    f.write(f"{g}\n")
+                    f.write(f"{(l != 1).sum()}\n")
+    for i, eval_pred in enumerate(eval_preds):
+        reset_mitex_compiler()
+        assert isinstance(eval_pred, EvalPrediction)
+        logits, labels = eval_pred.predictions, eval_pred.label_ids
+        preds = logits
+        labels = [np.where(lb == -100, 1, lb) for lb in labels]
+        preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        gts = tokenizer.batch_decode(labels, skip_special_tokens=True)
+        for j in tqdm(range(0, len(preds), batch_size)):
+            ress[i].extend(
+                formula_similarity_score(
+                    preds[j : j + batch_size], gts[j : j + batch_size]
+                )
+            )
+        with open(log_path + f"k{k}_i{i}_reward.txt", "w") as f:
+            for r in ress[i]:
+                f.write(f"{r}\n")
+    # 将 ress 合并为一个列表，其中取 max
+    res = [max([r[i] for r in ress]) for i in range(len(ress[0]))]
     if log_path is not None:
-        with open(log_path, "w") as f:
-            for p, g, l, r in zip(preds, gts, labels, res):
-                f.write(f"{p}\n")
-                f.write(f"{g}\n")
-                f.write(f"{(l != 1).sum()}\n")
+        with open(log_path + f"k{k}_max_reward.txt", "w") as f:
+            for r in res:
                 f.write(f"{r}\n")
     return {"image_similarity": torch.mean(torch.tensor(res)).item()}
 
